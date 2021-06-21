@@ -1,0 +1,319 @@
+
+
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>D3 Tree Map Fcc</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    
+   
+</head>
+
+<style>
+
+  .map{
+    display: block;
+    margin: 0 auto;
+  }
+
+.tooltip {	
+        
+          position: absolute;
+          text-align: center;			
+          				
+          font: 12px sans-serif;		
+          
+         		
+          	
+      }
+#title{
+  font: 2rem sans-serif;
+  text-align: center;
+}
+
+#description{
+  font: 1.3rem sans-serif;
+  text-align: center;
+  padding-bottom: 2rem;
+}
+
+     
+
+
+  
+
+    
+    
+    
+    
+    </style>
+
+<body>
+<div id="title">
+    Video Game Sales
+</div>
+<div id="description">
+    Top 100 Most Sold Video Games Grouped by Platform
+ 
+</div>
+  <svg class="map" width="1000" height="1000"></svg>
+  <svg id="legendContainer" ></svg>
+ 
+  
+
+    
+
+
+
+<script>
+var data_url = "https://cdn.freecodecamp.org/testable-projects-fcc/data/tree_map/video-game-sales-data.json"
+
+var margin = {top: 0, right: 0, bottom: 0, left: 0},
+  width = 1000 - margin.left - margin.right,
+  height = 1000 - margin.top - margin.bottom;
+
+// append the svg object to its container
+var svg = d3.select(".map")
+.append("svg")
+  .attr("width", width + margin.left + margin.right)
+  .attr("height", height + margin.top + margin.bottom)
+.append("g")
+  .attr("transform",
+        "translate(" + margin.left + "," + margin.top + ")")
+ 
+ //tooltip drawing function
+ callout = (g, value) => {
+  if (!value) return g.style("visibility", "hidden");
+
+     g
+      .style("visibility", null)
+      .style("pointer-events", "none")
+      .style("font", "10px sans-serif")
+      .attr("id","tooltip") ;
+  const path = g.selectAll("path")
+    .data([null])
+    .join("path")
+      .attr("fill", "white")
+      .attr("stroke", "black")
+      
+
+  const text = g.selectAll("text")
+    .data([null])
+    .join("text")
+    .call(text => text
+      .selectAll("tspan")
+      .data((value + "").split(/\n/))
+      .join("tspan")
+        .attr("x", 0)
+        .attr("y", (d, i) => `${i * 1.1}em`)
+        .style("font-weight", (_, i) => i ? null : "bold")
+        .text(d => d));
+
+  const {x, y, width: w, height: h} = text.node().getBBox();
+
+  text.attr("transform", `translate(${-w / 2},${15 - y})`);
+  path.attr("d", `M${-w / 2 - 10},5H-5l5,-5l5,5H${w / 2 + 10}v${h + 20}h-${w + 20}z`)
+  ;
+}    
+
+
+
+
+                 
+
+
+
+
+
+
+function getData() {
+      return new Promise((resolve, reject) => {
+        fetch(data_url)
+         .then(response => {
+           return response.json();
+          }).then(data_from_fetched => {
+             let data = JSON.parse(JSON.stringify(data_from_fetched));
+             resolve(data);
+       
+       })    
+      }
+      )}
+ 
+getData().then(data => {
+       console.log(data)
+       var root = d3.hierarchy(data).sum(function(d){ return d.value}) // Here the size of each leave is given in the 'value' field in input data
+       //var root =   d3.hierarchy(data)
+      // .sum(d => d.value)
+       .sort((a, b) => b.value - a.value)
+// Then d3.treemap computes the position of each element of the hierarchy
+d3.treemap()
+  .size([width, height])
+  .paddingTop(0)
+  .paddingRight(0)
+  .paddingInner(3)      // Padding between each rectangle
+ //.paddingOuter(6)
+  //.padding(20)
+  (root)
+
+// prepare a color scale
+var color = d3.scaleOrdinal(d3.schemeCategory10)
+  
+
+// And a opacity scale
+var opacity = d3.scaleLinear()
+  .domain([10, 100])
+  .range([0.5,2])
+//"data-name", "data-category", and "data-value" 
+// use this information to add rectangles:
+svg
+  .selectAll("rect")
+  .data(root.leaves())
+  .enter()
+  .append("rect")
+  .attr("class", "tile")
+  .attr("data-name",function(d){return d.parent.data.name})
+  .attr("data-category",function(d){return d.data.category})
+  .attr("data-value",function(d){return d.data.value})
+  
+    .attr('x', function (d) { return d.x0; })
+    .attr('y', function (d) { return d.y0; })
+    .attr('width', function (d) { return d.x1 - d.x0; })
+    .attr('height', function (d) { return d.y1 - d.y0; })
+    .style("stroke", "black")
+    .style("fill", function(d){ return color(d.parent.data.name)} )
+    .style("opacity", function(d){ return opacity(d.data.value)})
+
+
+// and to add the text labels
+svg
+  .selectAll("text")
+  .data(root.leaves())
+  .enter()
+  .append("text")
+    .attr("x", function(d){ return d.x0+5})    // +10 to adjust position (more right)
+    .attr("y", function(d){ return d.y0+3})    // +20 to adjust position (lower)
+    .selectAll("tspan")
+.data(function (d){ 
+  
+  return d.data.name.split(/(?=[A-Z][^A-Z])/g);}
+      //returns an array of splited strings
+    
+    )
+    .enter()
+    .append("tspan")
+    .attr( "x",function x(d) {
+      
+      return this.parentNode.attributes.x.value})
+    .attr("dy","1em")
+    .text(function (d) {
+      
+      return d;
+    })
+    .attr("font-size", "10px")
+    .attr("fill", "black")
+    .style("z-index", "0")
+    .lower()
+    .style("pointer-events", "none")
+
+
+
+
+
+    const tooltip = svg.append("g")
+
+    svg
+        .selectAll("rect")
+        .on("touchmove mousemove", function(event, d) {
+          
+      
+tooltip.call(callout,`${d.value}`);
+ 
+tooltip.attr("transform", `translate(${d3.pointer(event, this)})`)
+        
+      
+        .attr("data-value", d.value)
+      
+        .style("z-index", "5")
+   
+      d3.select(this)
+        .attr("stroke", "red")
+        ;
+    })
+    .on("touchend mouseleave", function() {
+      tooltip.call(callout, null);
+      d3.select(this)
+        .attr("stroke", null)
+        ;
+    });
+
+
+    const fontSize = 12;
+    const legendContainer = d3.select("#legendContainer")
+    let categories = root.leaves().map((node) => node.data.category)
+    console.log(categories)
+    categories = categories
+    .filter((category, index, self) => self
+    .indexOf(category) === index,);
+    
+    console.log(categories)
+
+    function position(d,i) {
+  var c = 4;   // number of columns
+  var h = 20;  // legend entry height
+  var w = 150; // legend entry width (so we can position the next column) 
+  var tx = 10; // tx/ty are essentially margin values
+  var ty = 10;
+  var x = i % c * w + tx;
+  var y = Math.floor(i / c) * h + ty;
+  return "translate(" + x + "," + y + ")";
+}
+
+
+legendContainer.attr('width', width).attr('height', height / 2).style("padding-top","3rem");  
+ let legend = d3.select("#legendContainer")
+ .selectAll('g.legendEntry')
+  .data(categories)
+  .enter()
+  .append('g')
+  .attr("id","legend")
+  .attr("transform", position);  
+  legend
+      .append('rect')
+      .attr('width', fontSize)
+      .attr('height', fontSize)
+      .attr('x', fontSize)
+      .attr("class","legend-item")
+      .attr('fill', (d) => color(d)) 
+      
+;
+      legend
+      .append('text')
+      .attr('transform', `translate(0, ${fontSize})`)
+      .attr('x', fontSize * 3)
+      
+      .style('font-size', fontSize)
+      .text((d) => d)
+  
+
+      
+    
+
+})
+
+    
+
+
+
+
+  
+ 
+     
+</script>   
+<script src="https://cdn.freecodecamp.org/testable-projects-fcc/v1/bundle.js"></script>
+
+</body>
+</html>
